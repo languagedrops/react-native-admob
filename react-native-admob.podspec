@@ -15,7 +15,7 @@ Pod::Spec.new do |s|
   
   s.platform = :ios, "8.0"
 
-  s.dependency 'Google-Mobile-Ads-SDK'
+  s.dependency 'Firebase/AdMob'
   s.dependency 'React'
 
 end
