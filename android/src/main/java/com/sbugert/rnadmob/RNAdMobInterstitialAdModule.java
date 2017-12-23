@@ -55,6 +55,7 @@ public class RNAdMobInterstitialAdModule extends ReactContextBaseJavaModule {
                     public void onAdClosed() {
                         sendEvent(EVENT_AD_CLOSED, null);
                     }
+
                     @Override
                     public void onAdFailedToLoad(int errorCode) {
                         String errorString = "ERROR_UNKNOWN";
@@ -81,17 +82,27 @@ public class RNAdMobInterstitialAdModule extends ReactContextBaseJavaModule {
                         WritableMap error = Arguments.createMap();
                         event.putString("message", errorMessage);
                         sendEvent(EVENT_AD_FAILED_TO_LOAD, event);
-                        mRequestAdPromise.reject(errorString, errorMessage);
+                        if (mRequestAdPromise != null) {
+                            mRequestAdPromise.reject(errorString, errorMessage);
+                            mRequestAdPromise = null;
+                        }
                     }
+
                     @Override
                     public void onAdLeftApplication() {
                         sendEvent(EVENT_AD_LEFT_APPLICATION, null);
                     }
+
                     @Override
                     public void onAdLoaded() {
                         sendEvent(EVENT_AD_LOADED, null);
-                        mRequestAdPromise.resolve(null);
+
+                        if (mRequestAdPromise != null) {
+                            mRequestAdPromise.resolve(null);
+                            mRequestAdPromise = null;
+                        }
                     }
+
                     @Override
                     public void onAdOpened() {
                         sendEvent(EVENT_AD_OPENED, null);
@@ -100,6 +111,7 @@ public class RNAdMobInterstitialAdModule extends ReactContextBaseJavaModule {
             }
         });
     }
+
     private void sendEvent(String eventName, @Nullable WritableMap params) {
         getReactApplicationContext().getJSModule(DeviceEventManagerModule.RCTDeviceEventEmitter.class).emit(eventName, params);
     }
@@ -113,20 +125,23 @@ public class RNAdMobInterstitialAdModule extends ReactContextBaseJavaModule {
 
     @ReactMethod
     public void setTestDevices(ReadableArray testDevices) {
-        ReadableNativeArray nativeArray = (ReadableNativeArray)testDevices;
+        ReadableNativeArray nativeArray = (ReadableNativeArray) testDevices;
         ArrayList<Object> list = nativeArray.toArrayList();
         this.testDevices = list.toArray(new String[list.size()]);
     }
 
     @ReactMethod
     public void requestAd(final Promise promise) {
+        mRequestAdPromise = promise;
         new Handler(Looper.getMainLooper()).post(new Runnable() {
             @Override
-            public void run () {
+            public void run() {
                 if (mInterstitialAd.isLoaded() || mInterstitialAd.isLoading()) {
-                    promise.reject("E_AD_ALREADY_LOADED", "Ad is already loaded.");
+                    if (mRequestAdPromise != null) {
+                        mRequestAdPromise.reject("E_AD_ALREADY_LOADED", "Ad is already loaded.");
+                        mRequestAdPromise = null;
+                    }
                 } else {
-                    mRequestAdPromise = promise;
                     AdRequest.Builder adRequestBuilder = new AdRequest.Builder();
                     if (testDevices != null) {
                         for (int i = 0; i < testDevices.length; i++) {
@@ -144,12 +159,17 @@ public class RNAdMobInterstitialAdModule extends ReactContextBaseJavaModule {
     public void showAd(final Promise promise) {
         new Handler(Looper.getMainLooper()).post(new Runnable() {
             @Override
-            public void run () {
+            public void run() {
                 if (mInterstitialAd.isLoaded()) {
-                    mInterstitialAd.show();
-                    promise.resolve(null);
+                    if (mRequestAdPromise != null) {
+                        mRequestAdPromise.resolve(null);
+                        mRequestAdPromise = null;
+                    }
                 } else {
-                    promise.reject("E_AD_NOT_READY", "Ad is not ready.");
+                    if (mRequestAdPromise != null) {
+                        mRequestAdPromise.reject("E_AD_NOT_READY", "Ad is not ready.");
+                        mRequestAdPromise = null;
+                    }
                 }
             }
         });
@@ -159,7 +179,7 @@ public class RNAdMobInterstitialAdModule extends ReactContextBaseJavaModule {
     public void isReady(final Callback callback) {
         new Handler(Looper.getMainLooper()).post(new Runnable() {
             @Override
-            public void run () {
+            public void run() {
                 callback.invoke(mInterstitialAd.isLoaded());
             }
         });
