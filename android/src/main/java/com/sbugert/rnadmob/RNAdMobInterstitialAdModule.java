@@ -162,6 +162,7 @@ public class RNAdMobInterstitialAdModule extends ReactContextBaseJavaModule {
             public void run() {
                 if (mInterstitialAd.isLoaded()) {
                     if (mRequestAdPromise != null) {
+                        mInterstitialAd.show();
                         mRequestAdPromise.resolve(null);
                         mRequestAdPromise = null;
                     }
